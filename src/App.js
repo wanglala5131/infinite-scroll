@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { ResetStyle } from './components/resetStyle';
 import { getRepositories } from './api/api';
 
 import RadioArea from './components/RadioArea';
 import ItemCard from './components/ItemCard';
+import Loading from './components/Loading';
 
 // radio options
 const typeOption = [
@@ -112,13 +113,17 @@ const SubmitButton = styled.button`
   border-radius: 5px;
   color: white;
   font-size: 16px;
-  cursor: pointer;
 
   @media (hover: hover) {
-    &:hover {
+    &:hover:not(:disabled) {
       filter: brightness(0.9);
       transition: all 0.1s ease-in-out;
+      cursor: pointer;
     }
+  }
+
+  &:disabled {
+    opacity: 0.5;
   }
 `;
 
@@ -147,41 +152,65 @@ const TextAlert = styled.p`
 `;
 
 function App() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isErrorName, setIsErrorName] = useState(false);
+
   const [orgName, setOrgName] = useState('nodejs');
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('created');
   const [directionstring, setDirectionstring] = useState('asc');
   const [result, setResult] = useState([]);
-  const currentDataInfo = useRef({
+  const [currentInfo, setCurrentInfo] = useState({
     orgName: '',
     type: '',
     sort: '',
     directionstring: '',
   });
 
-  useEffect(() => {
-    getPageData();
-  }, []);
+  const isChangeInfo = useMemo(() => {
+    return (
+      orgName === currentInfo.orgName &&
+      type === currentInfo.type &&
+      sort === currentInfo.sort &&
+      directionstring === currentInfo.directionstring
+    );
+  }, [orgName, type, sort, directionstring, currentInfo]);
 
   const searchData = () => {
+    if (isChangeInfo) return;
+
     getPageData();
   };
 
   const getPageData = () => {
+    setIsLoading(true);
     getRepositories({ orgName, type, sort, directionstring })
       .then(res => {
+        setIsErrorName(false);
         setResult(res);
-        currentDataInfo.current = {
+      })
+      .catch(err => {
+        if (err.status === 404) {
+          setIsErrorName(true);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+
+        setCurrentInfo({
           orgName,
           type,
           sort,
           directionstring,
-        };
-      })
-      .catch(err => {
-        console.log('err', err);
+        });
       });
   };
+
+  useEffect(() => {
+    getPageData();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="App">
@@ -221,7 +250,9 @@ function App() {
             currentValue={directionstring}
             setValue={setDirectionstring}
           />
-          <SubmitButton onClick={searchData}>Search</SubmitButton>
+          <SubmitButton disabled={isChangeInfo} onClick={searchData}>
+            Search
+          </SubmitButton>
         </Filter>
 
         <Text>Result</Text>
@@ -229,6 +260,16 @@ function App() {
         {result.map(item => {
           return <ItemCard key={item.id} item={item} />;
         })}
+
+        {result.length === 0 && !isErrorName && (
+          <TextAlert>Sorry! This result is empty.</TextAlert>
+        )}
+
+        {isErrorName && (
+          <TextAlert>Sorry! This organization name does not exist</TextAlert>
+        )}
+
+        {isLoading && <Loading />}
       </Container>
     </div>
   );

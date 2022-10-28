@@ -16,5 +16,5 @@ export const getRepositories = ({
     },
   })
     .then(res => res.data)
-    .catch(err => Promise.reject(err));
+    .catch(err => Promise.reject(err.response));
 };
