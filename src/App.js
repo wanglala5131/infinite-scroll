@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import styled from 'styled-components';
+import { ResetStyle } from './components/resetStyle';
 import { getRepositories } from './api/api';
 
-import RadioBox from './components/RadioBox';
+import RadioArea from './components/RadioArea';
+import ItemCard from './components/ItemCard';
 
 // radio options
 const typeOption = [
@@ -63,12 +66,98 @@ const directionOption = [
   },
 ];
 
+// style
+const Container = styled.main`
+  padding: 0 20px;
+  max-width: 800px;
+  width: 100%;
+  margin: auto;
+
+  h1 {
+    margin: 20px 0;
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+  }
+`;
+
+const Filter = styled.div`
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+`;
+
+const InputBox = styled.div`
+  display: flex;
+  flex-direction: column;
+
+  label {
+    margin: 0 10px 5px 0;
+    font-weight: 500;
+  }
+
+  input {
+    width: 50%;
+    min-width: 200px;
+    padding-left: 3px;
+    font-size: 16px;
+  }
+`;
+
+const SubmitButton = styled.button`
+  position: relative;
+  margin-top: 20px;
+  padding: 5px 10px;
+  background-color: #7b7b7b;
+  border-radius: 5px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+
+  @media (hover: hover) {
+    &:hover {
+      filter: brightness(0.9);
+      transition: all 0.1s ease-in-out;
+    }
+  }
+`;
+
+const Text = styled.p`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  font-size: 18px;
+  text-align: center;
+
+  &::after,
+  &::before {
+    content: '';
+    top: 50%;
+    height: 2px;
+    width: 50px;
+    margin: 0 5px;
+    background-color: #4f4f4f;
+  }
+`;
+
+const TextAlert = styled.p`
+  text-align: center;
+  font-size: 18px;
+`;
+
 function App() {
   const [orgName, setOrgName] = useState('nodejs');
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('created');
   const [directionstring, setDirectionstring] = useState('asc');
   const [result, setResult] = useState([]);
+  const currentDataInfo = useRef({
+    orgName: '',
+    type: '',
+    sort: '',
+    directionstring: '',
+  });
 
   useEffect(() => {
     getPageData();
@@ -81,8 +170,13 @@ function App() {
   const getPageData = () => {
     getRepositories({ orgName, type, sort, directionstring })
       .then(res => {
-        console.log(res);
         setResult(res);
+        currentDataInfo.current = {
+          orgName,
+          type,
+          sort,
+          directionstring,
+        };
       })
       .catch(err => {
         console.log('err', err);
@@ -91,47 +185,51 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Organization Repositories Search</h1>
-      <input
-        type="text"
-        value={orgName}
-        onChange={e => {
-          setOrgName(e.target.value);
-        }}
-      />
+      <ResetStyle />
+      <Container>
+        <h1>Organization Repositories Search</h1>
 
-      <RadioBox
-        radioId={'type'}
-        options={typeOption}
-        currentValue={type}
-        setValue={setType}
-      />
-      <RadioBox
-        radioId={'sort'}
-        options={sortOption}
-        currentValue={sort}
-        setValue={setSort}
-      />
-      <RadioBox
-        radioId={'directionstring'}
-        options={directionOption}
-        currentValue={directionstring}
-        setValue={setDirectionstring}
-      />
-      <button onClick={searchData}>Search</button>
+        <Filter>
+          <InputBox>
+            <label htmlFor="org">Organization Name</label>
+            <input
+              id="org"
+              type="text"
+              value={orgName}
+              placeholder="nodejs、python"
+              onChange={e => {
+                setOrgName(e.target.value);
+              }}
+            />
+          </InputBox>
 
-      {result.map(item => {
-        return (
-          <div>
-            <p>{item.name}</p>
-            <p>{item.forks}</p>
-            <p>{item.created_at}</p>
-            <p>{item.description || ''}</p>
-            <p>{item.language}</p>
-            <p>{item.url}</p>
-          </div>
-        );
-      })}
+          <RadioArea
+            radioId={'Type'}
+            options={typeOption}
+            currentValue={type}
+            setValue={setType}
+          />
+          <RadioArea
+            radioId={'Sort'}
+            options={sortOption}
+            currentValue={sort}
+            setValue={setSort}
+          />
+          <RadioArea
+            radioId={'Direction'}
+            options={directionOption}
+            currentValue={directionstring}
+            setValue={setDirectionstring}
+          />
+          <SubmitButton onClick={searchData}>Search</SubmitButton>
+        </Filter>
+
+        <Text>Result</Text>
+
+        {result.map(item => {
+          return <ItemCard key={item.id} item={item} />;
+        })}
+      </Container>
     </div>
   );
 }
