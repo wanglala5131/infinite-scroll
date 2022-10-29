@@ -1,6 +1,6 @@
 # infinite-scroll
 
-利用 Intersection Observer API 做出 無限滾動(infinite scroll) 的效果。
+利用 Intersection Observer API 做出 無限滾動(infinite scroll) 的效果。  
 串接的 api 使用 [Github Doc](https://docs.github.com/en/rest/repos/repos#list-organization-repositories) 提供的 GET /orgs/{org}/repos
 
 [網頁連結](https://wanglala5131.github.io/infinite-scroll/)
