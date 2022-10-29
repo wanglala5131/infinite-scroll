@@ -172,7 +172,7 @@ function App() {
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('created');
   const [direction, setdirection] = useState('asc');
-  const [result, setResult] = useState([]);
+  const [results, setResults] = useState([]);
 
   const currentPage = useRef(1);
   const [currentInfo, setCurrentInfo] = useState({
@@ -206,13 +206,13 @@ function App() {
 
     getRepositories({ orgName, type, sort, direction })
       .then(res => {
-        setResult(res);
+        setResults(res);
 
         res.length < 30 ? setIsEnd(true) : setObserver();
       })
       .catch(err => {
         if (err.status === 404) {
-          setResult([]);
+          setResults([]);
           setIsErrorName(true);
         }
       })
@@ -234,7 +234,7 @@ function App() {
 
   const setObserver = () => {
     // callback會被cache，所以要重設observer
-    const observer = new IntersectionObserver(watchScroll, {
+    const observer = new IntersectionObserver(observerCallback, {
       root: null,
       threshold: [1],
     });
@@ -246,7 +246,7 @@ function App() {
     }, 0);
   };
 
-  const watchScroll = entries => {
+  const observerCallback = entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         fetchNextData();
@@ -266,7 +266,7 @@ function App() {
       page: nextPage,
     })
       .then(res => {
-        setResult(prev => [...prev, ...res]);
+        setResults(prev => [...prev, ...res]);
 
         if (res.length < 30) {
           setIsEnd(true);
@@ -286,12 +286,12 @@ function App() {
       ? ''
       : isErrorName
       ? 'Sorry! This organization name does not exist.'
-      : result.length === 0
+      : results.length === 0
       ? 'Sorry! This result is empty.'
       : isEnd
       ? 'No more results.'
       : '';
-  }, [isStart, isErrorName, isEnd, result.length]);
+  }, [isStart, isErrorName, isEnd, results.length]);
 
   return (
     <div className="App">
@@ -339,7 +339,7 @@ function App() {
         {isStart && <Text>Result</Text>}
 
         <ItemWrapper>
-          {result.map(item => {
+          {results.map(item => {
             return <ItemCard key={item.id} item={item} />;
           })}
 
