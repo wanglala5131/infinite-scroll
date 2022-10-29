@@ -6,6 +6,7 @@ import { getRepositories } from './api/api';
 import RadioArea from './components/RadioArea';
 import ItemCard from './components/ItemCard';
 import Loading from './components/Loading';
+import GoTop from './components/GoTop';
 
 // radio options
 const typeOption = [
@@ -83,7 +84,7 @@ const Container = styled.main`
 `;
 
 const Filter = styled.div`
-  border: 1px solid #eee;
+  border: 3px solid #eee;
   border-radius: 10px;
   padding: 20px;
 `;
@@ -194,34 +195,29 @@ function App() {
   const searchData = () => {
     if (isChangeInfo) return;
 
+    // 每次 search 就再判斷是否須要重設 observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
     setIsLoading(true);
+    setIsErrorName(false);
+    setIsEnd(false);
+
     getRepositories({ orgName, type, sort, direction })
       .then(res => {
         setResult(res);
-        setIsErrorName(false);
-        setIsEnd(false);
-        currentPage.current = 1;
 
-        if (res.length < 30) {
-          setIsEnd(true);
-
-          if (observerRef.current) {
-            observerRef.current.unobserve(checkPointRef.current);
-          }
-        } else {
-          setObserver();
-        }
+        res.length < 30 ? setIsEnd(true) : setObserver();
       })
       .catch(err => {
         if (err.status === 404) {
-          if (observerRef.current)
-            observerRef.current.unobserve(checkPointRef.current);
-
           setResult([]);
           setIsErrorName(true);
         }
       })
       .finally(() => {
+        currentPage.current = 1;
         setCurrentInfo({
           orgName,
           type,
@@ -233,29 +229,29 @@ function App() {
       });
   };
 
-  const watchScroll = (entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        fetchNextData();
-      }
-    });
-  };
-
   const observerRef = useRef(null);
   const checkPointRef = useRef(null);
 
   const setObserver = () => {
     // callback會被cache，所以要重設observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
     const observer = new IntersectionObserver(watchScroll, {
       root: null,
       threshold: [1],
     });
+
     observerRef.current = observer;
 
-    observerRef.current.observe(checkPointRef.current);
+    setTimeout(() => {
+      observerRef.current.observe(checkPointRef.current);
+    }, 0);
+  };
+
+  const watchScroll = entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        fetchNextData();
+      }
+    });
   };
 
   const fetchNextData = () => {
@@ -341,16 +337,19 @@ function App() {
         </Filter>
 
         {isStart && <Text>Result</Text>}
+
         <ItemWrapper>
           {result.map(item => {
             return <ItemCard key={item.id} item={item} />;
           })}
+
           <CheckPoint className="check-point" ref={checkPointRef} />
         </ItemWrapper>
 
         <TextAlert>{textAlert}</TextAlert>
 
         {isLoading && <Loading />}
+        <GoTop />
       </Container>
     </div>
   );
