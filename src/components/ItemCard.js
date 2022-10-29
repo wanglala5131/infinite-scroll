@@ -31,7 +31,7 @@ export default function ItemCard({ item }) {
   return (
     <ItemBox>
       <Info>
-        <span>Name:</span> {item.name}
+        <span>Full Name:</span> {item.full_name}
       </Info>
       <Info>
         <span>Forks:</span> {item.forks}
@@ -41,6 +41,9 @@ export default function ItemCard({ item }) {
       </Info>
       <Info>
         <span>Update Date:</span> {timeFormat(item.updated_at)}
+      </Info>
+      <Info>
+        <span>Pushed Date:</span> {timeFormat(item.pushed_at)}
       </Info>
       {item.language && (
         <Info>

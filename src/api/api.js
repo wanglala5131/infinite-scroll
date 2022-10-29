@@ -4,7 +4,7 @@ export const getRepositories = ({
   orgName,
   type = 'all',
   sort = 'created',
-  directionstring = 'asc',
+  direction = 'asc',
   page = 1,
 }) => {
   return axios({
@@ -13,7 +13,7 @@ export const getRepositories = ({
     params: {
       type,
       sort,
-      directionstring,
+      direction,
       page,
     },
   })

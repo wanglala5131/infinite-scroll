@@ -162,6 +162,7 @@ const CheckPoint = styled.div`
 `;
 
 function App() {
+  const [isStart, setStart] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isErrorName, setIsErrorName] = useState(false);
   const [isEnd, setIsEnd] = useState(false);
@@ -169,7 +170,7 @@ function App() {
   const [orgName, setOrgName] = useState('');
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('created');
-  const [directionstring, setDirectionstring] = useState('asc');
+  const [direction, setdirection] = useState('asc');
   const [result, setResult] = useState([]);
 
   const currentPage = useRef(1);
@@ -177,44 +178,28 @@ function App() {
     orgName: '',
     type: '',
     sort: '',
-    directionstring: '',
+    direction: '',
   });
-
-  // mounted
-  // useEffect(() => {
-  //   setIsLoading(true);
-  //   getRepositories({ orgName: 'nodejs' })
-  //     .then(res => {
-  //       setIsErrorName(false);
-  //       setResult(res);
-  //     })
-  //     .catch(err => {
-  //       if (err.status === 404) {
-  //         setIsErrorName(true);
-  //       }
-  //     })
-  //     .finally(() => {
-  //       setIsLoading(false);
-  //     });
-  // }, []);
 
   const isChangeInfo = useMemo(() => {
     return (
-      orgName === currentInfo.orgName &&
-      type === currentInfo.type &&
-      sort === currentInfo.sort &&
-      directionstring === currentInfo.directionstring
+      orgName === '' ||
+      (orgName === currentInfo.orgName &&
+        type === currentInfo.type &&
+        sort === currentInfo.sort &&
+        direction === currentInfo.direction)
     );
-  }, [orgName, type, sort, directionstring, currentInfo]);
+  }, [orgName, type, sort, direction, currentInfo]);
 
   const searchData = () => {
     if (isChangeInfo) return;
 
     setIsLoading(true);
-    getRepositories({ orgName, type, sort, directionstring })
+    getRepositories({ orgName, type, sort, direction })
       .then(res => {
         setResult(res);
         setIsErrorName(false);
+        setIsEnd(false);
         currentPage.current = 1;
 
         if (res.length < 30) {
@@ -228,17 +213,23 @@ function App() {
         }
       })
       .catch(err => {
-        setIsErrorName(true);
-        console.log(err);
+        if (err.status === 404) {
+          if (observerRef.current)
+            observerRef.current.unobserve(checkPointRef.current);
+
+          setResult([]);
+          setIsErrorName(true);
+        }
       })
       .finally(() => {
         setCurrentInfo({
           orgName,
           type,
           sort,
-          directionstring,
+          direction,
         });
         setIsLoading(false);
+        setStart(true);
       });
   };
 
@@ -275,7 +266,7 @@ function App() {
       orgName,
       type,
       sort,
-      directionstring,
+      direction,
       page: nextPage,
     })
       .then(res => {
@@ -293,6 +284,18 @@ function App() {
         console.log(err);
       });
   };
+
+  const textAlert = useMemo(() => {
+    return !isStart
+      ? ''
+      : isErrorName
+      ? 'Sorry! This organization name does not exist.'
+      : result.length === 0
+      ? 'Sorry! This result is empty.'
+      : isEnd
+      ? 'No more results.'
+      : '';
+  }, [isStart, isErrorName, isEnd, result.length]);
 
   return (
     <div className="App">
@@ -329,15 +332,15 @@ function App() {
           <RadioArea
             radioId={'Direction'}
             options={directionOption}
-            currentValue={directionstring}
-            setValue={setDirectionstring}
+            currentValue={direction}
+            setValue={setdirection}
           />
           <SubmitButton disabled={isChangeInfo} onClick={searchData}>
             Search
           </SubmitButton>
         </Filter>
 
-        <Text>Result</Text>
+        {isStart && <Text>Result</Text>}
         <ItemWrapper>
           {result.map(item => {
             return <ItemCard key={item.id} item={item} />;
@@ -345,15 +348,7 @@ function App() {
           <CheckPoint className="check-point" ref={checkPointRef} />
         </ItemWrapper>
 
-        {result.length === 0 && !isErrorName && (
-          <TextAlert>Sorry! This result is empty.</TextAlert>
-        )}
-
-        {isErrorName && (
-          <TextAlert>Sorry! This organization name does not exist</TextAlert>
-        )}
-
-        {isEnd && result.length > 0 && <TextAlert>No more results</TextAlert>}
+        <TextAlert>{textAlert}</TextAlert>
 
         {isLoading && <Loading />}
       </Container>
