@@ -5,6 +5,7 @@ export const getRepositories = ({
   type = 'all',
   sort = 'created',
   directionstring = 'asc',
+  page = 1,
 }) => {
   return axios({
     method: 'get',
@@ -13,6 +14,7 @@ export const getRepositories = ({
       type,
       sort,
       directionstring,
+      page,
     },
   })
     .then(res => res.data)

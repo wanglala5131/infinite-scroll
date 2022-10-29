@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { ResetStyle } from './components/resetStyle';
 import { getRepositories } from './api/api';
@@ -72,7 +72,7 @@ const Container = styled.main`
   padding: 0 20px;
   max-width: 800px;
   width: 100%;
-  margin: auto;
+  margin: 20px auto 50px;
 
   h1 {
     margin: 20px 0;
@@ -151,21 +151,52 @@ const TextAlert = styled.p`
   font-size: 18px;
 `;
 
+const ItemWrapper = styled.div`
+  position: relative;
+`;
+
+const CheckPoint = styled.div`
+  position: absolute;
+  bottom: 25%;
+  left: 0;
+`;
+
 function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isErrorName, setIsErrorName] = useState(false);
+  const [isEnd, setIsEnd] = useState(false);
 
-  const [orgName, setOrgName] = useState('nodejs');
+  const [orgName, setOrgName] = useState('');
   const [type, setType] = useState('all');
   const [sort, setSort] = useState('created');
   const [directionstring, setDirectionstring] = useState('asc');
   const [result, setResult] = useState([]);
+
+  const currentPage = useRef(1);
   const [currentInfo, setCurrentInfo] = useState({
     orgName: '',
     type: '',
     sort: '',
     directionstring: '',
   });
+
+  // mounted
+  // useEffect(() => {
+  //   setIsLoading(true);
+  //   getRepositories({ orgName: 'nodejs' })
+  //     .then(res => {
+  //       setIsErrorName(false);
+  //       setResult(res);
+  //     })
+  //     .catch(err => {
+  //       if (err.status === 404) {
+  //         setIsErrorName(true);
+  //       }
+  //     })
+  //     .finally(() => {
+  //       setIsLoading(false);
+  //     });
+  // }, []);
 
   const isChangeInfo = useMemo(() => {
     return (
@@ -179,38 +210,89 @@ function App() {
   const searchData = () => {
     if (isChangeInfo) return;
 
-    getPageData();
-  };
-
-  const getPageData = () => {
     setIsLoading(true);
     getRepositories({ orgName, type, sort, directionstring })
       .then(res => {
-        setIsErrorName(false);
         setResult(res);
-      })
-      .catch(err => {
-        if (err.status === 404) {
-          setIsErrorName(true);
+        setIsErrorName(false);
+        currentPage.current = 1;
+
+        if (res.length < 30) {
+          setIsEnd(true);
+
+          if (observerRef.current) {
+            observerRef.current.unobserve(checkPointRef.current);
+          }
+        } else {
+          setObserver();
         }
       })
+      .catch(err => {
+        setIsErrorName(true);
+        console.log(err);
+      })
       .finally(() => {
-        setIsLoading(false);
-
         setCurrentInfo({
           orgName,
           type,
           sort,
           directionstring,
         });
+        setIsLoading(false);
       });
   };
 
-  useEffect(() => {
-    getPageData();
+  const watchScroll = (entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        fetchNextData();
+      }
+    });
+  };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const observerRef = useRef(null);
+  const checkPointRef = useRef(null);
+
+  const setObserver = () => {
+    // callback會被cache，所以要重設observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+    const observer = new IntersectionObserver(watchScroll, {
+      root: null,
+      threshold: [1],
+    });
+    observerRef.current = observer;
+
+    observerRef.current.observe(checkPointRef.current);
+  };
+
+  const fetchNextData = () => {
+    const nextPage = currentPage.current + 1;
+    currentPage.current = nextPage;
+
+    getRepositories({
+      orgName,
+      type,
+      sort,
+      directionstring,
+      page: nextPage,
+    })
+      .then(res => {
+        setResult(prev => [...prev, ...res]);
+
+        if (res.length < 30) {
+          setIsEnd(true);
+
+          if (observerRef.current) {
+            observerRef.current.unobserve(checkPointRef.current);
+          }
+        }
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
 
   return (
     <div className="App">
@@ -256,10 +338,12 @@ function App() {
         </Filter>
 
         <Text>Result</Text>
-
-        {result.map(item => {
-          return <ItemCard key={item.id} item={item} />;
-        })}
+        <ItemWrapper>
+          {result.map(item => {
+            return <ItemCard key={item.id} item={item} />;
+          })}
+          <CheckPoint className="check-point" ref={checkPointRef} />
+        </ItemWrapper>
 
         {result.length === 0 && !isErrorName && (
           <TextAlert>Sorry! This result is empty.</TextAlert>
@@ -268,6 +352,8 @@ function App() {
         {isErrorName && (
           <TextAlert>Sorry! This organization name does not exist</TextAlert>
         )}
+
+        {isEnd && result.length > 0 && <TextAlert>No more results</TextAlert>}
 
         {isLoading && <Loading />}
       </Container>
