@@ -1,7 +1,7 @@
-# infinite-scroll
+# infinite-scroll & 簡易版 Virtualized List
 
 - 利用 Intersection Observer API 做出 無限滾動(infinite scroll) 的效果。
-- 手刻簡易版 virtaul list ([參考資料](https://ithelp.ithome.com.tw/articles/10271764), 但有點亂會再重構)
+- 手刻簡易版 Virtualized List ([參考資料](https://ithelp.ithome.com.tw/articles/10271764), 但有點亂會再重構)
 - 串接的 api 使用 [Github Doc](https://docs.github.com/en/rest/repos/repos#list-organization-repositories) 提供的 GET /orgs/{org}/repos
 
 [網頁連結](https://wanglala5131.github.io/infinite-scroll/)
