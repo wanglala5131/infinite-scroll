@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { ResetStyle } from './components/resetStyle';
 import { getRepositories } from './api/api';
@@ -81,6 +81,10 @@ const Container = styled.main`
     font-weight: 700;
     text-align: center;
   }
+`;
+
+const WindowScroll = styled.div`
+  overflow-y: scroll;
 `;
 
 const Filter = styled.div`
@@ -293,64 +297,106 @@ function App() {
       : '';
   }, [isStart, isErrorName, isEnd, results.length]);
 
+  // virtual list
+  // 473 是 wrapper 上面的高度， 245 是 item 的高度
+  const windowHeight = useMemo(() => {
+    return window.innerHeight;
+  }, []);
+
+  const listHeight = useMemo(() => {
+    return `${245 * results.length}px`;
+  }, [results.length]);
+
+  const [scrollTop, setScrollTop] = useState(0);
+  const onScroll = useCallback(e => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  const startIndex = Math.max(0, Math.floor((scrollTop - 473) / 245));
+  const endIndex = Math.min(
+    results.length > 0 ? results.length - 1 : 0,
+    Math.floor((scrollTop - 473 + windowHeight) / 245)
+  );
+
+  const [itemList, setItemList] = useState([]);
+  useEffect(() => {
+    const renderItem = index => {
+      const item = results[index];
+      return <ItemCard key={item.id} item={item} index={index} />;
+    };
+
+    if (results.length > 0) {
+      const tempItemList = [];
+      for (let i = startIndex; i <= endIndex; i++) {
+        tempItemList.push(renderItem(i));
+      }
+      setItemList(tempItemList);
+    } else {
+      setItemList([]);
+    }
+  }, [startIndex, endIndex, results]);
+
   return (
     <div className="App">
       <ResetStyle />
-      <Container>
-        <h1>Organization Repositories Search</h1>
+      <WindowScroll onScroll={onScroll} style={{ height: windowHeight }}>
+        {/* <div style={{ position: 'fixed', top: 0, left: 0 }}>
+          {startIndex} , {endIndex}
+        </div> */}
+        <Container>
+          <h1>Organization Repositories Search</h1>
 
-        <Filter>
-          <InputBox>
-            <label htmlFor="org">Organization Name</label>
-            <input
-              id="org"
-              type="text"
-              value={orgName}
-              placeholder="nodejs、python"
-              onChange={e => {
-                setOrgName(e.target.value);
-              }}
+          <Filter>
+            <InputBox>
+              <label htmlFor="org">Organization Name</label>
+              <input
+                id="org"
+                type="text"
+                value={orgName}
+                placeholder="nodejs、python"
+                onChange={e => {
+                  setOrgName(e.target.value);
+                }}
+              />
+            </InputBox>
+
+            <RadioArea
+              radioId={'Type'}
+              options={typeOption}
+              currentValue={type}
+              setValue={setType}
             />
-          </InputBox>
+            <RadioArea
+              radioId={'Sort'}
+              options={sortOption}
+              currentValue={sort}
+              setValue={setSort}
+            />
+            <RadioArea
+              radioId={'Direction'}
+              options={directionOption}
+              currentValue={direction}
+              setValue={setdirection}
+            />
+            <SubmitButton disabled={isChangeInfo} onClick={searchData}>
+              Search
+            </SubmitButton>
+          </Filter>
 
-          <RadioArea
-            radioId={'Type'}
-            options={typeOption}
-            currentValue={type}
-            setValue={setType}
-          />
-          <RadioArea
-            radioId={'Sort'}
-            options={sortOption}
-            currentValue={sort}
-            setValue={setSort}
-          />
-          <RadioArea
-            radioId={'Direction'}
-            options={directionOption}
-            currentValue={direction}
-            setValue={setdirection}
-          />
-          <SubmitButton disabled={isChangeInfo} onClick={searchData}>
-            Search
-          </SubmitButton>
-        </Filter>
+          {isStart && <Text>Result</Text>}
 
-        {isStart && <Text>Result</Text>}
+          <ItemWrapper style={{ height: listHeight }}>
+            {itemList}
 
-        <ItemWrapper>
-          {results.map(item => {
-            return <ItemCard key={item.id} item={item} />;
-          })}
+            <CheckPoint className="check-point" ref={checkPointRef} />
+          </ItemWrapper>
 
-          <CheckPoint className="check-point" ref={checkPointRef} />
-        </ItemWrapper>
+          <TextAlert>{textAlert}</TextAlert>
 
-        <TextAlert>{textAlert}</TextAlert>
-
-        {isLoading && <Loading />}
-        <GoTop />
-      </Container>
+          {isLoading && <Loading />}
+          <GoTop />
+        </Container>
+      </WindowScroll>
     </div>
   );
 }
